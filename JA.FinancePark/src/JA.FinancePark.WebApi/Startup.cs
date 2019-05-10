@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -8,6 +10,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -44,6 +47,17 @@ namespace JA.FinancePark.WebApi
             });
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+            services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Optimal);
+            services.AddResponseCompression(options =>
+            {
+                options.EnableForHttps = true;
+            });
+
+            // Add memory cache services
+            services.AddMemoryCache(setup =>
+            {
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -60,6 +74,29 @@ namespace JA.FinancePark.WebApi
             }
 
             app.UseHttpsRedirection();
+
+            app.UseResponseCompression();
+
+            app.Use(
+                       next =>
+                       {
+                           return async context =>
+                           {
+                               var stopWatch = new Stopwatch();
+                               stopWatch.Start();
+                               context.Response.OnStarting(
+                                   () =>
+                                   {
+                                       stopWatch.Stop();
+                                       context.Response.Headers.Add("X-ResponseTime-Ms", stopWatch.Elapsed.TotalMilliseconds.ToString());
+
+                                       return Task.CompletedTask;
+                                   });
+
+                               await next(context);
+                           };
+                       });
+
             app.UseMvc();
 
             app.UseSwagger();
