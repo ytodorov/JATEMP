@@ -6,10 +6,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace JA.FinancePark.WebApi.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ValuesController : ControllerBase
+   
+    public class ValuesController : JafpaControllerBase
     {
+        public ValuesController(IServiceProvider serviceProvider) : base(serviceProvider)
+        {
+
+        }
+
         // GET api/values
         [HttpGet]
         public ActionResult<IEnumerable<string>> Get()
